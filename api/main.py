@@ -14,10 +14,10 @@ from pathlib import Path
 
 from auth import get_login_url, handle_callback, get_user_from_token, logout_user
 from engine import build_prompt, style_response
-from sharepoint import ler_arquivos_da_pasta_ti, buscar_pasta_por_nome, listar_arquivos_pasta
+from sharepoint import ler_arquivos_da_pasta_ti, listar_arquivos_pasta, listar_raiz_sharepoint, listar_pasta
 from config import (
     OLLAMA_URL, MODELO, HISTORY_FILE, REDIRECT_URI, CLIENT_ID, 
-    TENANT_ID, BASE_URL, API_URL
+    TENANT_ID, BASE_URL, API_URL, DRIVE_ID
 )
 
 # ============================================
@@ -104,6 +104,69 @@ def delete_conversation(user_id, conversation_id):
     return False
 
 # ============================================
+# BUSCA RÁPIDA DE PASTA (match exato primeiro)
+# ============================================
+def buscar_pasta_rapida(access_token, nome_procurado):
+    """Busca uma pasta diretamente na raiz e subpastas (sem carregar tudo)"""
+    print(f"[SHAREPOINT] Busca rapida pela pasta: '{nome_procurado}'...")
+    
+    nome_limpo = nome_procurado.lower().replace('.', '').replace(' ', '').replace('-', '').replace('_', '')
+    
+    raiz = listar_raiz_sharepoint(access_token)
+    if "error" in raiz:
+        return None
+    
+    # PRIMEIRO: match EXATO na raiz
+    for item in raiz.get("value", []):
+        if "folder" in item:
+            item_nome = item["name"].lower().replace('.', '').replace(' ', '').replace('-', '').replace('_', '')
+            if nome_limpo == item_nome:
+                print(f"[SHAREPOINT] Pasta encontrada na raiz (exata): {item['name']}")
+                return {"nome": item["name"], "id": item["id"], "caminho": item["name"]}
+    
+    # SEGUNDO: match PARCIAL na raiz
+    for item in raiz.get("value", []):
+        if "folder" in item:
+            item_nome = item["name"].lower().replace('.', '').replace(' ', '').replace('-', '').replace('_', '')
+            if nome_limpo in item_nome and len(nome_limpo) >= 2:
+                print(f"[SHAREPOINT] Pasta encontrada na raiz (parcial): {item['name']}")
+                return {"nome": item["name"], "id": item["id"], "caminho": item["name"]}
+    
+    # TERCEIRO: match EXATO nas subpastas
+    for item in raiz.get("value", []):
+        if "folder" in item:
+            try:
+                sub = listar_pasta(access_token, item["id"])
+                if "value" in sub:
+                    for sub_item in sub["value"]:
+                        if "folder" in sub_item:
+                            sub_nome = sub_item["name"].lower().replace('.', '').replace(' ', '').replace('-', '').replace('_', '')
+                            if nome_limpo == sub_nome:
+                                caminho = f"{item['name']}/{sub_item['name']}"
+                                print(f"[SHAREPOINT] Pasta encontrada na subpasta (exata): {caminho}")
+                                return {"nome": sub_item["name"], "id": sub_item["id"], "caminho": caminho}
+            except:
+                pass
+    
+    # QUARTO: match PARCIAL nas subpastas
+    for item in raiz.get("value", []):
+        if "folder" in item:
+            try:
+                sub = listar_pasta(access_token, item["id"])
+                if "value" in sub:
+                    for sub_item in sub["value"]:
+                        if "folder" in sub_item:
+                            sub_nome = sub_item["name"].lower().replace('.', '').replace(' ', '').replace('-', '').replace('_', '')
+                            if nome_limpo in sub_nome and len(nome_limpo) >= 2:
+                                caminho = f"{item['name']}/{sub_item['name']}"
+                                print(f"[SHAREPOINT] Pasta encontrada na subpasta (parcial): {caminho}")
+                                return {"nome": sub_item["name"], "id": sub_item["id"], "caminho": caminho}
+            except:
+                pass
+    
+    return None
+
+# ============================================
 # MODELOS
 # ============================================
 class ChatData(BaseModel):
@@ -156,10 +219,7 @@ def callback(code: str):
         return RedirectResponse(url=f"{BASE_URL}/ia/index.html?error={error_msg}")
     
     print(f"Login bem-sucedido para: {result.get('user')}")
-    
     redirect_url = f"{BASE_URL}/ia/chat.html?token={result['token']}"
-    print(f"Redirecionando para: {redirect_url}")
-    
     return RedirectResponse(url=redirect_url)
 
 @app.post("/logout")
@@ -180,7 +240,6 @@ def chat(data: ChatData):
     
     session = get_user_from_token(data.token)
     if not session:
-        print("Token invalido ou expirado")
         raise HTTPException(status_code=401, detail="Nao autenticado")
     
     username = session.get("user", "unknown")
@@ -188,7 +247,6 @@ def chat(data: ChatData):
     access_token = session.get("access_token")
     
     if not access_token:
-        print("Access token nao encontrado")
         raise HTTPException(status_code=401, detail="Token de acesso invalido")
     
     print(f"Usuario: {username}")
@@ -198,14 +256,12 @@ def chat(data: ChatData):
     if not conversation_id:
         new_conv = create_conversation(user_id, "Nova Conversa")
         conversation_id = new_conv["id"]
-        print(f"Nova conversa: {conversation_id}")
     
     conv = get_conversation(user_id, conversation_id)
     if not conv:
         new_conv = create_conversation(user_id, "Nova Conversa")
         conversation_id = new_conv["id"]
         conv = new_conv
-        print(f"Conversa recriada: {conversation_id}")
     
     historico = ""
     for msg in conv.get("messages", [])[-10:]:
@@ -229,13 +285,14 @@ def chat(data: ChatData):
         print("Buscando documentos no SharePoint...")
         try:
             nome_pasta = None
-            match_pasta = re.search(r'pasta\s+([^\s,.?]+)', data.pergunta, re.IGNORECASE)
+            match_pasta = re.search(r'pasta\s+([^\s,?]+)', data.pergunta, re.IGNORECASE)
             if match_pasta:
                 nome_pasta = match_pasta.group(1)
             
             if nome_pasta:
                 print(f"Procurando pasta especifica: {nome_pasta}")
-                pasta_encontrada, erro = buscar_pasta_por_nome(access_token, nome_pasta)
+                pasta_encontrada = buscar_pasta_rapida(access_token, nome_pasta)
+                
                 if pasta_encontrada:
                     arquivos_data = listar_arquivos_pasta(access_token, pasta_encontrada['id'])
                     if "value" in arquivos_data:
@@ -270,12 +327,9 @@ def chat(data: ChatData):
                 "model": MODELO,
                 "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
-                "options": {
-                    "temperature": 0.3,
-                    "max_tokens": 4096
-                }
+                "options": {"temperature": 0.1, "max_tokens": 2048}
             },
-            timeout=(10, 120)
+            timeout=(30, 180)
         )
         response.raise_for_status()
         result = response.json().get("message", {}).get("content", "")
@@ -290,10 +344,15 @@ def chat(data: ChatData):
             result = re.sub(r'Sou a HigIA[^.]*\.\s*', '', result)
             result = re.sub(r'assistente (inteligente )?da Cotton Line[^.]*\.\s*', '', result)
             result = re.sub(r'Como posso ajudar\??\s*', '', result)
-            result = result.strip()
+        
+        # Remove "Questão de seguimento" e qualquer texto extra
+        result = re.sub(r'\n*Questão de seguimento.*', '', result, flags=re.DOTALL)
+        result = re.sub(r'\n*Follow.?up.*', '', result, flags=re.DOTALL)
+        result = re.sub(r'\n*USUARIO:.*', '', result, flags=re.DOTALL)
+        result = re.sub(r'\n*HIGIA:.*', '', result, flags=re.DOTALL)
+        result = result.strip()
         
     except requests.exceptions.ConnectionError:
-        print("Ollama nao esta rodando!")
         raise HTTPException(status_code=503, detail="Servico de IA indisponivel")
     except Exception as e:
         print(f"Erro Ollama: {str(e)}")
@@ -303,10 +362,7 @@ def chat(data: ChatData):
     add_message_to_conversation(user_id, conversation_id, "user", data.pergunta)
     add_message_to_conversation(user_id, conversation_id, "assistant", resposta_formatada)
     
-    return {
-        "response": resposta_formatada,
-        "conversation_id": conversation_id
-    }
+    return {"response": resposta_formatada, "conversation_id": conversation_id}
 
 # ============================================
 # ROTAS DE CONVERSAS
@@ -316,19 +372,9 @@ def get_conversations_list(token: str):
     session = get_user_from_token(token)
     if not session:
         raise HTTPException(status_code=401, detail="Nao autenticado")
-    
     user_id = session.get("claims", {}).get("oid", session.get("user", "unknown"))
     conversations = get_conversations(user_id)
-    
-    result = []
-    for conv in conversations:
-        result.append({
-            "id": conv.get("id"),
-            "title": conv.get("title", "Nova Conversa"),
-            "created_at": conv.get("created_at"),
-            "message_count": len(conv.get("messages", []))
-        })
-    
+    result = [{"id": c.get("id"), "title": c.get("title", "Nova Conversa"), "created_at": c.get("created_at"), "message_count": len(c.get("messages", []))} for c in conversations]
     return {"conversations": result}
 
 @app.post("/conversations/new")
@@ -336,59 +382,37 @@ def create_new_conversation(data: NewConversationData):
     session = get_user_from_token(data.token)
     if not session:
         raise HTTPException(status_code=401, detail="Nao autenticado")
-    
     user_id = session.get("claims", {}).get("oid", session.get("user", "unknown"))
     title = data.title or "Nova Conversa"
-    
     new_conv = create_conversation(user_id, title)
-    
     welcome_msg = "Olá! Tudo certo?<br><br>Sou a <b>HigIA</b>, a assistente inteligente da <b>Cotton Line</b>. Estou aqui para ajudar com documentos, processos internos e tirar dúvidas.<br><br>Como posso ajudar você hoje?"
     add_message_to_conversation(user_id, new_conv["id"], "assistant", welcome_msg)
-    
-    return {
-        "conversation_id": new_conv["id"],
-        "title": new_conv["title"]
-    }
+    return {"conversation_id": new_conv["id"], "title": new_conv["title"]}
 
 @app.get("/conversations/{conversation_id}")
 def get_conversation_messages(token: str, conversation_id: str):
     session = get_user_from_token(token)
     if not session:
         raise HTTPException(status_code=401, detail="Nao autenticado")
-    
     user_id = session.get("claims", {}).get("oid", session.get("user", "unknown"))
     conv = get_conversation(user_id, conversation_id)
-    
     if not conv:
         raise HTTPException(status_code=404, detail="Conversa nao encontrada")
-    
-    return {
-        "id": conv.get("id"),
-        "title": conv.get("title"),
-        "messages": conv.get("messages", [])
-    }
+    return {"id": conv.get("id"), "title": conv.get("title"), "messages": conv.get("messages", [])}
 
 @app.delete("/conversations/{conversation_id}")
 def delete_conversation_endpoint(token: str, conversation_id: str):
     session = get_user_from_token(token)
     if not session:
         raise HTTPException(status_code=401, detail="Nao autenticado")
-    
     user_id = session.get("claims", {}).get("oid", session.get("user", "unknown"))
-    
     if delete_conversation(user_id, conversation_id):
         return {"success": True}
-    else:
-        raise HTTPException(status_code=404, detail="Conversa nao encontrada")
+    raise HTTPException(status_code=404, detail="Conversa nao encontrada")
 
 @app.get("/health")
 def health():
-    return {
-        "status": "ok",
-        "model": MODELO,
-        "ollama": OLLAMA_URL,
-        "timestamp": datetime.now().isoformat()
-    }
+    return {"status": "ok", "model": MODELO, "ollama": OLLAMA_URL, "timestamp": datetime.now().isoformat()}
 
 # ============================================
 # INICIA O SERVIDOR
@@ -396,9 +420,7 @@ def health():
 if __name__ == "__main__":
     import uvicorn
     import sys
-    
     sys.stdout.reconfigure(encoding='utf-8')
-    
     print("="*60)
     print(">>> INICIANDO API HigIA")
     print("="*60)
@@ -406,11 +428,4 @@ if __name__ == "__main__":
     print(f"    Modelo: {MODELO}")
     print(f"    Dados: D:/IA/api/")
     print("="*60)
-    
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        ssl_keyfile="C:/certs/htopp-s003.key",
-        ssl_certfile="C:/certs/htopp-s003.crt"
-    )
+    uvicorn.run(app, host="0.0.0.0", port=8000, ssl_keyfile="C:/certs/htopp-s003.key", ssl_certfile="C:/certs/htopp-s003.crt")

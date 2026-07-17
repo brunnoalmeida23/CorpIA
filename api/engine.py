@@ -16,6 +16,8 @@ REGRAS OBRIGATORIAS - SIGA SEMPRE:
 7. NAO use frases como "Vamos la", "Deixe-me verificar"
 8. NAO repita sua apresentacao depois da primeira mensagem
 9. Se o historico ja tem mensagens da HigIA, NAO se apresente - apenas responda
+10. NUNCA adicione perguntas de seguimento, sugestoes ou continue a conversa por conta propria. Apenas responda exatamente o que foi perguntado.
+11. NUNCA invente URLs, links ou formas de acesso a arquivos. Apenas liste o que foi encontrado no SharePoint.
 
 QUANDO FOR SAUDACAO NA PRIMEIRA MENSAGEM:
 - Apresente-se: "Sou a HigIA, assistente da Cotton Line. Como posso ajudar?"
@@ -33,7 +35,6 @@ EXEMPLOS:
 """
 
 def build_prompt(user, pergunta, contexto, historico):
-    # So e primeira mensagem se o USUARIO ainda nao enviou nada
     is_first = not historico or "Usuario:" not in historico
     
     print(f"\n[ENGINE] Verificando pergunta: '{pergunta}'")
@@ -46,8 +47,6 @@ def build_prompt(user, pergunta, contexto, historico):
     # ============================================
     if is_greeting(pergunta):
         print("[ENGINE] Detectado como SAUDAÇÃO!")
-        
-        # Se ja tem historico, NAO se apresenta
         if not is_first:
             prompt = f"""
 {PERSONA}
@@ -135,7 +134,7 @@ PERGUNTA: {pergunta}
 CONTEUDO DO ARQUIVO {nome_arquivo}:
 {conteudo_extraido}
 
-INSTRUCAO: Mostre APENAS o conteudo do arquivo. NAO se apresente. Nao invente nada. Seja direto.
+INSTRUCAO: Mostre APENAS o conteudo do arquivo. NAO se apresente. Nao invente nada. Seja direto. NAO adicione perguntas extras.
 RESPOSTA:"""
         else:
             prompt = f"""
@@ -145,7 +144,7 @@ HISTORICO: {historico if historico else "Nenhuma conversa anterior."}
 USUARIO: {user}
 PERGUNTA: {pergunta}
 
-INSTRUCAO: Diga que o arquivo nao foi encontrado. Sugira verificar permissoes. NAO se apresente. Nao invente nada. Maximo 2 frases.
+INSTRUCAO: Diga que o arquivo nao foi encontrado. Sugira verificar permissoes. NAO se apresente. Nao invente nada. Maximo 2 frases. NAO adicione perguntas extras.
 RESPOSTA:"""
         return prompt
     
@@ -153,7 +152,6 @@ RESPOSTA:"""
     # CASO 2: LISTA DE ARQUIVOS OU PASTAS
     # ============================================
     if precisa_contexto and contexto:
-        # Se o contexto ja tem "ARQUIVOS DA PASTA", e uma pasta especifica
         if "ARQUIVOS DA PASTA" in contexto:
             prompt = f"""
 {PERSONA}
@@ -164,11 +162,10 @@ PERGUNTA: {pergunta}
 
 {contexto}
 
-INSTRUCAO: Mostre APENAS os arquivos da pasta listada acima. NAO liste outras pastas. NAO invente nada. NAO se apresente. Seja direto. Use **negrito** para o nome da pasta.
+INSTRUCAO: Mostre APENAS os arquivos da pasta listada acima. NAO liste outras pastas. NAO invente nada. NAO se apresente. NAO adicione perguntas extras. Seja direto. Use **negrito** para o nome da pasta.
 RESPOSTA:"""
             return prompt
         
-        # Contexto generico (lista de pastas principais)
         nomes = []
         for linha in contexto.split('\n'):
             if linha.startswith('- '):
@@ -188,7 +185,7 @@ PERGUNTA: {pergunta}
 LISTA DE PASTAS:
 {lista_formatada}
 
-INSTRUCAO: Mostre as pastas de forma organizada. NAO invente nada. NAO se apresente. Va direto para a lista.
+INSTRUCAO: Mostre as pastas de forma organizada. NAO invente nada. NAO se apresente. NAO adicione perguntas extras. Va direto para a lista.
 RESPOSTA:"""
         else:
             prompt = f"""
@@ -198,7 +195,7 @@ HISTORICO: {historico if historico else "Nenhuma conversa anterior."}
 USUARIO: {user}
 PERGUNTA: {pergunta}
 
-INSTRUCAO: Diga que nao encontrou pastas ou arquivos. NAO invente nada. NAO se apresente. Maximo 2 frases.
+INSTRUCAO: Diga que nao encontrou pastas ou arquivos. NAO invente nada. NAO se apresente. NAO adicione perguntas extras. Maximo 2 frases.
 RESPOSTA:"""
         return prompt
     
@@ -213,7 +210,7 @@ HISTORICO: {historico if historico else "Nenhuma conversa anterior."}
 USUARIO: {user}
 PERGUNTA: {pergunta}
 
-INSTRUCAO: Primeira mensagem do usuario. Responda direto a pergunta. NAO se apresente. NAO invente nada. Use **negrito** se util.
+INSTRUCAO: Primeira mensagem do usuario. Responda direto a pergunta. NAO se apresente. NAO invente nada. NAO adicione perguntas extras. Use **negrito** se util.
 RESPOSTA:"""
         return prompt
     
@@ -227,7 +224,7 @@ HISTORICO: {historico if historico else "Nenhuma conversa anterior."}
 USUARIO: {user}
 PERGUNTA: {pergunta}
 
-INSTRUCAO: Responda de forma natural e direta. NAO se apresente. Nao invente nada. Maximo 3 frases. Nao use emojis.
+INSTRUCAO: Responda de forma natural e direta. NAO se apresente. Nao invente nada. NAO adicione perguntas extras. Maximo 3 frases. Nao use emojis.
 RESPOSTA:"""
     
     return prompt
