@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>HigIA - IA Corporativa</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+    background:#e8edf5;
+    color:#1a2332;
+    font-family:'Segoe UI', Arial,sans-serif;
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+.login-container{
+    background:#ffffff;
+    padding:50px 60px;
+    border-radius:20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+    text-align:center;
+    max-width:440px;
+    width:100%;
+}
+.logo{
+    margin-bottom:20px;
+}
+.logo img{
+    max-height:60px;
+    width:auto;
+}
+.logo-text{
+    font-size:32px;
+    font-weight:700;
+    color:#1a2332;
+}
+.logo-text .highlight{
+    color:#7c3aed;
+    font-weight:800;
+}
+.subtitle{
+    color:#6b7a93;
+    font-size:15px;
+    margin-top:6px;
+    margin-bottom:25px;
+}
+.btn-login{
+    background:#7c3aed;
+    color:white;
+    border:none;
+    padding:14px 30px;
+    width:100%;
+    cursor:pointer;
+    border-radius:12px;
+    font-size:16px;
+    font-weight:600;
+    transition:all 0.3s ease;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+}
+.btn-login:hover{
+    background:#6d28d9;
+    transform:translateY(-2px);
+    box-shadow:0 8px 30px rgba(124,58,237,0.25);
+}
+.btn-login:disabled{
+    opacity:0.6;
+    cursor:not-allowed;
+}
+.keep-connected{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    margin:15px 0;
+    color:#6b7a93;
+    font-size:14px;
+}
+.keep-connected input[type="checkbox"]{
+    width:18px;
+    height:18px;
+    accent-color:#7c3aed;
+    cursor:pointer;
+}
+.keep-connected label{
+    cursor:pointer;
+}
+.footer-text{
+    color:#94a3b8;
+    font-size:13px;
+    margin-top:15px;
+}
+.error-message{
+    background:#fee2e2;
+    color:#dc2626;
+    padding:12px;
+    border-radius:8px;
+    margin-top:15px;
+    font-size:14px;
+    display:none;
+}
+</style>
+</head>
+<body>
+<div class="login-container">
+    <div class="logo">
+        <img src="/ia/logo-cotton.jpg" alt="Cotton Line" style="max-height:50px;" onerror="this.style.display='none'">
+    </div>
+    <div class="logo-text">Hig<span class="highlight">IA</span></div>
+    <div class="subtitle">Assistente inteligente da Cotton Line</div>
+    
+    <div class="keep-connected">
+        <input type="checkbox" id="keepConnected" checked>
+        <label for="keepConnected">Manter conectado por 7 dias</label>
+    </div>
+    
+    <button class="btn-login" onclick="login()" id="loginBtn">
+        <svg viewBox="0 0 24 24" fill="white" width="20" height="20">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        </svg>
+        Conectar com Microsoft
+    </button>
+    <div class="footer-text">Acesse com sua conta corporativa</div>
+    <div class="error-message" id="errorMessage"></div>
+</div>
+
+<script>
+const API_BASE = 'https://192.168.0.3:8000';
+
+function login() {
+    const loginBtn = document.getElementById('loginBtn');
+    const errorDiv = document.getElementById('errorMessage');
+    
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = '⏳ Conectando...';
+    errorDiv.style.display = 'none';
+    
+    const keepConnected = document.getElementById('keepConnected').checked;
+    const maxAge = keepConnected ? 604800 : 3600;
+    
+    window.location.href = `${API_BASE}/login?maxAge=${maxAge}`;
+}
+
+const urlParams = new URLSearchParams(window.location.search);
+const error = urlParams.get('error');
+if (error) {
+    const errorDiv = document.getElementById('errorMessage');
+    errorDiv.textContent = 'Erro na autenticação: ' + decodeURIComponent(error);
+    errorDiv.style.display = 'block';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>HigIA - Chat IA</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+    background:#e8edf5;
+    color:#1a2332;
+    font-family:'Segoe UI', Arial,sans-serif;
+    height:100vh;
+    display:flex;
+}
+.sidebar{
+    width:280px;
+    background:#0f172a;
+    color:#e8edf5;
+    display:flex;
+    flex-direction:column;
+    flex-shrink:0;
+}
+.sidebar-header{
+    padding:16px 20px;
+    border-bottom:1px solid #1e293b;
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+.sidebar-header h2{
+    font-size:16px;
+    font-weight:700;
+    color:#ffffff;
+}
+.sidebar-header .sub{
+    font-size:11px;
+    color:#94a3b8;
+}
+.btn-new-chat{
+    margin:12px 16px;
+    padding:10px 16px;
+    background:#7c3aed;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:14px;
+    font-weight:600;
+    transition:all 0.3s ease;
+}
+.btn-new-chat:hover{
+    background:#6d28d9;
+}
+.conversation-list{
+    flex:1;
+    overflow-y:auto;
+    padding:8px 12px;
+}
+.conv-item{
+    padding:10px 12px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-bottom:4px;
+    transition:all 0.2s ease;
+    font-size:14px;
+    color:#94a3b8;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+.conv-item:hover{
+    background:#1e293b;
+    color:#ffffff;
+}
+.conv-item.active{
+    background:#1e293b;
+    color:#ffffff;
+}
+.conv-item .title{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    flex:1;
+}
+.conv-item .delete-btn{
+    background:none;
+    border:none;
+    color:#64748b;
+    cursor:pointer;
+    font-size:14px;
+    opacity:0;
+    transition:opacity 0.2s;
+}
+.conv-item:hover .delete-btn{
+    opacity:1;
+}
+.conv-item .delete-btn:hover{
+    color:#ef4444;
+}
+.sidebar-footer{
+    padding:12px 16px;
+    border-top:1px solid #1e293b;
+}
+.btn-logout{
+    width:100%;
+    padding:10px;
+    background:#1e293b;
+    color:#94a3b8;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:14px;
+    font-weight:600;
+    transition:all 0.3s ease;
+}
+.btn-logout:hover{
+    background:#ef4444;
+    color:#ffffff;
+}
+.main-area{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    background:#e8edf5;
+}
+.header{
+    background:#ffffff;
+    padding:12px 30px;
+    border-bottom:2px solid #dce3ed;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-shrink:0;
+}
+.header h2{
+    font-size:18px;
+    font-weight:700;
+    color:#1a2332;
+}
+.header h2 .highlight{
+    color:#7c3aed;
+}
+.header .sub{
+    font-size:13px;
+    color:#6b7a93;
+    margin-left:auto;
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+.header .sub .status-dot {
+    display:inline-block;
+    width:10px;
+    height:10px;
+    background:#22c55e;
+    border-radius:50%;
+    animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+    0%, 100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.6; transform:scale(0.9); }
+}
+.chat-area{
+    flex:1;
+    overflow-y:auto;
+    padding:20px 30px;
+    background:#e8edf5;
+}
+.message{
+    margin:10px 0;
+    padding:14px 20px;
+    border-radius:16px;
+    max-width:85%;
+    line-height:1.6;
+    font-size:15px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.user-msg{
+    background:#7c3aed;
+    color:white;
+    margin-left:auto;
+    border-bottom-right-radius:4px;
+}
+.bot-msg{
+    background:#ffffff;
+    color:#1a2332;
+    border-left:4px solid #7c3aed;
+    border-bottom-left-radius:4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.bot-msg .name{
+    color:#7c3aed;
+    font-weight:700;
+    font-size:13px;
+    margin-bottom:4px;
+}
+.input-area{
+    background:#ffffff;
+    padding:15px 30px;
+    border-top:2px solid #dce3ed;
+    display:none;
+    gap:12px;
+    flex-shrink:0;
+}
+.input-area.visible{
+    display:flex;
+}
+.input-area input{
+    flex:1;
+    padding:12px 18px;
+    border-radius:12px;
+    border:2px solid #dce3ed;
+    background:#f7f9fc;
+    color:#1a2332;
+    font-size:15px;
+    outline:none;
+}
+.input-area input:focus{
+    border-color:#7c3aed;
+}
+.input-area input::placeholder{
+    color:#8a9bb5;
+}
+.input-area button{
+    padding:12px 28px;
+    background:#7c3aed;
+    color:white;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:15px;
+    font-weight:600;
+    transition:all 0.3s ease;
+}
+.input-area button:hover:not(:disabled){
+    background:#6d28d9;
+}
+.input-area button:disabled{
+    opacity:0.5;
+    cursor:not-allowed;
+}
+.thinking {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #f0f4fa;
+    border-radius: 12px;
+    color: #6b7a93;
+    font-size: 14px;
+}
+.thinking .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #6b7a93;
+    border-radius: 50%;
+    animation: bounce 1.4s infinite ease-in-out both;
+}
+.thinking .dot:nth-child(1) { animation-delay: -0.32s; }
+.thinking .dot:nth-child(2) { animation-delay: -0.16s; }
+.thinking .dot:nth-child(3) { animation-delay: 0s; }
+@keyframes bounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+}
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: #6b7a93;
+}
+.empty-state .big {
+    font-size: 56px;
+    margin-bottom: 12px;
+}
+.empty-state h3 {
+    color: #1a2332;
+    font-size: 22px;
+    margin-bottom: 8px;
+}
+.empty-state h3 .highlight{
+    color:#7c3aed;
+}
+.empty-state p {
+    color: #6b7a93;
+    font-size: 15px;
+    max-width: 400px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+.error-banner {
+    background: #fee2e2;
+    color: #dc2626;
+    padding: 12px 20px;
+    text-align: center;
+    font-size: 14px;
+    display: none;
+}
+.error-banner.show {
+    display: block;
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-header">
+        <div>
+            <h2>💬 Conversas</h2>
+            <div class="sub">Cotton Line IA</div>
+        </div>
+    </div>
+    <button class="btn-new-chat" id="btnNewChat">+ Nova Conversa</button>
+    <div class="conversation-list" id="conversationList">
+        <div style="color:#64748b;text-align:center;padding:20px;font-size:14px;">
+            Carregando...
+        </div>
+    </div>
+    <div class="sidebar-footer">
+        <button class="btn-logout" onclick="logout()">🚪 Sair</button>
+    </div>
+</div>
+
+<div class="main-area">
+    <div class="error-banner" id="errorBanner"></div>
+    <div class="header">
+        <div>
+            <h2 id="chatTitle">Hig<span class="highlight">IA</span></h2>
+            <div style="font-size:12px;color:#6b7a93;">Assistente IA da Cotton Line</div>
+        </div>
+        <span class="sub">
+            <span class="status-dot"></span>
+            online
+        </span>
+    </div>
+
+    <div class="chat-area" id="chatArea">
+        <div class="empty-state" id="emptyState">
+            <div class="big">💬</div>
+            <h3>Bem-vindo à <span class="highlight">HigIA</span></h3>
+            <p>
+                Clique em <b>+ Nova Conversa</b> para começar.<br>
+                Estou pronta para ajudar com documentos, processos e dúvidas da empresa.
+            </p>
+        </div>
+    </div>
+
+    <div class="input-area" id="inputArea">
+        <input id="msgInput" placeholder="Digite sua pergunta..." />
+        <button onclick="sendMessage()" id="sendBtn">Enviar</button>
+    </div>
+</div>
+
+<script>
+const API = "https://192.168.0.3:8000";
+const chatArea = document.getElementById("chatArea");
+const msgInput = document.getElementById("msgInput");
+const sendBtn = document.getElementById("sendBtn");
+const conversationList = document.getElementById("conversationList");
+const chatTitle = document.getElementById("chatTitle");
+const btnNewChat = document.getElementById("btnNewChat");
+const errorBanner = document.getElementById("errorBanner");
+const inputArea = document.getElementById("inputArea");
+const emptyState = document.getElementById("emptyState");
+
+let currentConversationId = null;
+let token = null;
+let conversations = [];
+let isLoadingConversation = false;
+let isProcessing = false;
+
+// ============================================
+// TOKEN
+// ============================================
+const params = new URLSearchParams(window.location.search);
+token = params.get("token");
+
+if (!token) {
+    const savedToken = sessionStorage.getItem("higia_token");
+    if (savedToken) {
+        token = savedToken;
+    } else {
+        showError("Não autenticado. Faça login novamente.");
+        setTimeout(() => {
+            window.location.href = "/ia/index.html";
+        }, 2000);
+    }
+} else {
+    sessionStorage.setItem("higia_token", token);
+    window.history.replaceState({}, document.title, "/ia/chat.html");
+}
+
+function showError(msg) {
+    errorBanner.textContent = msg;
+    errorBanner.classList.add("show");
+    setTimeout(() => {
+        errorBanner.classList.remove("show");
+    }, 5000);
+}
+
+// ============================================
+// CONTROLE DO INPUT
+// ============================================
+function showInput() {
+    inputArea.classList.add("visible");
+}
+
+function hideInput() {
+    inputArea.classList.remove("visible");
+}
+
+function showEmptyState() {
+    emptyState.style.display = "block";
+}
+
+function hideEmptyState() {
+    emptyState.style.display = "none";
+}
+
+// ============================================
+// LOGOUT
+// ============================================
+async function logout() {
+    if (confirm("Deseja realmente sair? Sua sessão será encerrada.")) {
+        if (token) {
+            try {
+                await fetch(`${API}/logout`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ token: token })
+                });
+            } catch (error) {}
+        }
+        sessionStorage.removeItem("higia_token");
+        sessionStorage.clear();
+        token = null;
+        window.location.replace("/ia/index.html");
+    }
+}
+
+// ============================================
+// INATIVIDADE
+// ============================================
+let inactivityTimer = null;
+const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
+
+function resetInactivityTimer() {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(function() {
+        alert("Sessão expirada por inatividade. Faça login novamente.");
+        logout();
+    }, INACTIVITY_TIMEOUT);
+}
+
+document.addEventListener('mousemove', resetInactivityTimer);
+document.addEventListener('keydown', resetInactivityTimer);
+document.addEventListener('click', resetInactivityTimer);
+document.addEventListener('scroll', resetInactivityTimer);
+
+// ============================================
+// CONVERSAS
+// ============================================
+async function loadConversations() {
+    if (!token) return;
+    
+    try {
+        const res = await fetch(`${API}/conversations?token=${token}`);
+        const data = await res.json();
+        conversations = data.conversations || [];
+        renderConversations();
+    } catch (error) {
+        console.error("Erro ao carregar conversas:", error);
+    }
+}
+
+function renderConversations() {
+    if (conversations.length === 0) {
+        conversationList.innerHTML = `
+            <div style="color:#64748b;text-align:center;padding:20px;font-size:14px;">
+                Nenhuma conversa ainda.<br>Clique em "Nova Conversa" para começar!
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    for (const conv of conversations) {
+        const isActive = conv.id === currentConversationId;
+        html += `
+            <div class="conv-item ${isActive ? 'active' : ''}" onclick="selectConversation('${conv.id}')">
+                <span class="title">${conv.title || 'Nova Conversa'}</span>
+                <button class="delete-btn" onclick="event.stopPropagation(); deleteConversation('${conv.id}')">✕</button>
+            </div>
+        `;
+    }
+    conversationList.innerHTML = html;
+}
+
+async function selectConversation(convId) {
+    if (isLoadingConversation || convId === currentConversationId) return;
+    currentConversationId = convId;
+    renderConversations();
+    await loadConversation(convId);
+}
+
+async function loadConversation(convId) {
+    if (isLoadingConversation || !token) return;
+    isLoadingConversation = true;
+    
+    try {
+        const res = await fetch(`${API}/conversations/${convId}?token=${token}`);
+        
+        if (res.status === 401) {
+            showError("Sessão expirada. Faça login novamente.");
+            setTimeout(() => logout(), 2000);
+            return;
+        }
+        
+        const data = await res.json();
+        
+        chatTitle.innerHTML = data.title || 'Hig<span class="highlight">IA</span>';
+        chatArea.innerHTML = '';
+        hideEmptyState();
+        showInput();
+        
+        const messages = data.messages || [];
+        for (const msg of messages) {
+            const type = msg.role === 'user' ? 'user' : 'bot';
+            addMessageDirect(type, msg.content);
+        }
+        
+        chatArea.scrollTop = chatArea.scrollHeight;
+        
+    } catch (error) {
+        console.error("Erro ao carregar conversa:", error);
+        showError("Erro ao carregar mensagens.");
+    } finally {
+        isLoadingConversation = false;
+    }
+}
+
+async function createNewConversation(silent = false) {
+    if (!token) return;
+    
+    try {
+        const res = await fetch(`${API}/conversations/new`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: token, title: "Nova Conversa" })
+        });
+        const data = await res.json();
+        
+        if (data.conversation_id) {
+            currentConversationId = data.conversation_id;
+            await loadConversations();
+            renderConversations();
+            
+            // Carrega a conversa do servidor (ja vem com a mensagem de boas-vindas)
+            hideEmptyState();
+            showInput();
+            chatTitle.innerHTML = 'Hig<span class="highlight">IA</span>';
+            await loadConversation(currentConversationId);
+            msgInput.focus();
+        }
+    } catch (error) {
+        if (!silent) {
+            showError("Erro ao criar nova conversa. Tente novamente.");
+        }
+        console.error("Erro ao criar conversa:", error);
+    }
+}
+
+async function deleteConversation(convId) {
+    if (!confirm("Deseja realmente excluir esta conversa?")) return;
+    if (!token) return;
+    
+    try {
+        await fetch(`${API}/conversations/${convId}?token=${token}`, {
+            method: "DELETE"
+        });
+        
+        conversations = conversations.filter(c => c.id !== convId);
+        
+        if (currentConversationId === convId) {
+            currentConversationId = null;
+        }
+        
+        renderConversations();
+        
+        if (conversations.length === 0 || !currentConversationId) {
+            chatArea.innerHTML = '';
+            chatArea.appendChild(emptyState);
+            showEmptyState();
+            hideInput();
+            chatTitle.innerHTML = 'Hig<span class="highlight">IA</span>';
+        }
+        
+    } catch (error) {
+        console.error("Erro ao excluir conversa:", error);
+        showError("Erro ao excluir conversa. Tente novamente.");
+    }
+}
+
+// ============================================
+// CHAT
+// ============================================
+function addMessageDirect(type, text) {
+    const div = document.createElement("div");
+    div.className = `message ${type === 'user' ? 'user-msg' : 'bot-msg'}`;
+    
+    if (type === 'bot') {
+        div.innerHTML = `<div class="name">🤖 <span class="highlight">HigIA</span></div>${text}`;
+    } else {
+        div.innerHTML = `<b>👤 Você</b><br>${text}`;
+    }
+    
+    chatArea.appendChild(div);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function showThinking() {
+    const div = document.createElement("div");
+    div.className = "message bot-msg";
+    div.id = "thinkingMessage";
+    div.innerHTML = `
+        <div class="name">🤖 <span class="highlight">HigIA</span></div>
+        <div class="thinking">
+            <span>Pensando</span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+        </div>
+    `;
+    chatArea.appendChild(div);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function removeThinking() {
+    const thinking = document.getElementById("thinkingMessage");
+    if (thinking) thinking.remove();
+}
+
+async function sendMessage() {
+    const text = msgInput.value.trim();
+    if (!text || !token || isProcessing) return;
+    
+    if (!currentConversationId) {
+        await createNewConversation(true);
+        await new Promise(r => setTimeout(r, 500));
+        if (!currentConversationId) {
+            showError("Erro ao criar conversa. Tente novamente.");
+            return;
+        }
+    }
+    
+    isProcessing = true;
+    addMessageDirect('user', text);
+    
+    msgInput.value = "";
+    msgInput.disabled = true;
+    sendBtn.disabled = true;
+    sendBtn.textContent = "⏳";
+    
+    showThinking();
+    
+    try {
+        const res = await fetch(`${API}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token: token,
+                pergunta: text,
+                conversation_id: currentConversationId
+            })
+        });
+        
+        const data = await res.json();
+        removeThinking();
+        
+        if (res.status === 401) {
+            showError("Sessão expirada. Faça login novamente.");
+            setTimeout(() => logout(), 2000);
+            return;
+        }
+        
+        if (data.response) {
+            addMessageDirect('bot', data.response);
+        } else if (data.detail) {
+            addMessageDirect('bot', `❌ ${data.detail}`);
+        } else {
+            addMessageDirect('bot', "Desculpe, não consegui processar sua pergunta.");
+        }
+        
+        await loadConversations();
+        renderConversations();
+        
+    } catch (error) {
+        removeThinking();
+        console.error("Erro:", error);
+        addMessageDirect('bot', `❌ Erro de conexão com o servidor.`);
+        showError("Erro ao enviar mensagem. Verifique se o servidor está online.");
+    }
+    
+    msgInput.disabled = false;
+    sendBtn.disabled = false;
+    sendBtn.textContent = "Enviar";
+    isProcessing = false;
+    msgInput.focus();
+}
+
+// ============================================
+// EVENTOS
+// ============================================
+msgInput.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+btnNewChat.addEventListener("click", function(e) {
+    e.preventDefault();
+    createNewConversation(false);
+});
+
+// ============================================
+// INICIALIZAÇÃO
+// ============================================
+window.onload = function() {
+    if (token) {
+        loadConversations();
+        resetInactivityTimer();
+    }
+};
+</script>
+</body>
+</html>

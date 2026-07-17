@@ -1,0 +1,10 @@
+*.json
+config.py
+logs/
+__pycache__/
+*.pyc
+.env
+_backup/
+upload/
+uvicorn
+dados/
